@@ -8,13 +8,15 @@ TAGS = ["friends", "meeting", "meetup", "social", "chat", "conversation", "buddy
 #   ACTION=:popular   - Popular follows people who have liked an image on the popular page (this means they are active users)
 #   ACTION=:like
 #   ACTION=:like_follow
-ACTION = :like
+ACTION = :like_follow
 
 # CHANGE THE NUMBER OF LIKES OR FOLLOWS YOU WANT TO OCCUR, e.g. NO MORE THEN 100 is the current setting
 MAX_COUNT = 10
 
 # MAX seconds is the number of seconds to randomly wait between doing your next follow or like (this helps to avoid acting like a crazy spam bot)
-MAX_SECS = 15
+# Blocked: 10s, 20s.
+# 60s seems slow but it trotted along nicely.
+MAX_SECS = 20
 
 # Hit the URL below, the returned GET request will give you an auth token from Instagram.
 #
@@ -57,14 +59,22 @@ rescue Exception => error
 end
 
 def likePicture(pictureId)
+  puts "Liking Picture: #{pictureId}"
   url = "https://api.instagram.com/v1/media/#{pictureId}/likes"
   send_request(:post, url)
+
+  # Take a Break - Be Human Like
+  take_a_break(5)
 end
 
 def followUser(userId)
+  puts "Following User: #{userId}"
   url = "https://api.instagram.com/v1/users/#{userId}/relationship"
   query = {"action" => "follow"}
   send_request(:post, url, query)
+
+  # Take a Break - Be Human Like
+  take_a_break
 end
         
 def likeAndFollowUser(userId)
@@ -75,6 +85,7 @@ def likeAndFollowUser(userId)
   puts "Liking #{picsToLike} pics for user #{userId}"
 
   begin
+    # Like Users Photos
     response['data'].each_with_index do |picture, index|
       puts "Liking picture #{picture['id']}."
       likePicture picture['id']
@@ -84,11 +95,12 @@ def likeAndFollowUser(userId)
     puts error
   end
 
+  # Follow User
   followUser userId
 end
 
-def take_a_break
-  seconds = rand(1..MAX_SECS)
+def take_a_break(max = MAX_SECS)
+  seconds = rand(1..max)
   puts "Taking a break for #{seconds} seconds."
   sleep seconds
 end
@@ -127,9 +139,6 @@ if ACTION == :like or ACTION == :like_follow
         usersFollowing << userId
       end
 
-      # Take a Break - Be human like!
-      take_a_break
-
       # Print some stats
       if picturesLiked.length % 10 == 0
         puts "Liked ##{tag} pictures: #{picturesLiked.length}"
@@ -155,6 +164,8 @@ if ACTION == :like or ACTION == :like_follow
   end
 
 elsif ACTION == :popular
+  puts "Checking Popular Photos"
+
   usersFollowing = []
   url = "https://api.instagram.com/v1/media/popular"
   puts url
@@ -169,21 +180,12 @@ elsif ACTION == :popular
       
       # Follow User
       usersFollowing << userId if likeAndFollowUser(userId)
-      
-      # Take a Break - Be human like!
-      take_a_break
 
       break if usersFollowing.length == MAX_COUNT
     end
 
-    # Take a Break - Be human like!
-      take_a_break
-
     break if usersFollowing.length == MAX_COUNT
   end
-
-  puts ""
-  puts "Followed #{usersFollowing.length}"
 end
 
 puts "FOLLOW PIE ENDS - HAPPY DIGESTING"
