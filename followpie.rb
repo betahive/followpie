@@ -2,21 +2,21 @@
 require 'httparty'
 
 # Choose the tag you want to like based on, keep the word in double quotes, do not put a # sign in front of the tag
-TAGS = ["friends", "meeting", "meetup", "social", "chat", "conversation", "buddy", "friend", "coffee", "buddies"]
+TAGS = ["fashion", "style", "stylish", "love", "me", "cute", "photooftheday", "instagood", "instafashion", "pretty", "girly", "pink", "girl", "girls", "eyes", "model", "dress", "skirt", "shoes", "heels", "styles", "outfit", "purse", "jewelry", "shopping"]
 
 # IF YOU WANT THE ACTION TO FOLLOW OR LIKE SOMEONE BASED ON THE CHOSEN TAG CHANGE IT TO EITHER
 #   ACTION=:popular   - Popular follows people who have liked an image on the popular page (this means they are active users)
 #   ACTION=:like
 #   ACTION=:like_follow
-ACTION = :like_follow
+ACTION = :like
 
 # CHANGE THE NUMBER OF LIKES OR FOLLOWS YOU WANT TO OCCUR, e.g. NO MORE THEN 100 is the current setting
-MAX_COUNT = 10
+MAX_COUNT = 100
 
 # MAX seconds is the number of seconds to randomly wait between doing your next follow or like (this helps to avoid acting like a crazy spam bot)
 # Blocked: 10s, 20s.
 # 60s seems slow but it trotted along nicely.
-MAX_SECS = 20
+MAX_SECS = 60
 
 # Hit the URL below, the returned GET request will give you an auth token from Instagram.
 #
@@ -27,8 +27,10 @@ MAX_SECS = 20
 #   https://api.instagram.com/oauth/authorize/?client_id=f3de7f80695549739c48a2e20538a3e1&redirect_uri=http://joinpingle.com&response_type=token&display=touch&scope=likes+relationships
 IG_CLIENT_ID     = 'f3de7f80695549739c48a2e20538a3e1'
 IG_CLIENT_SECRET = 'edfbe3b8981142889e4d8abe18a7b56e'
-IG_ACCESS_TOKEN  = '595214910.f3de7f8.c92a1adf58004687bb3657bdfbd4de46'
+# IG_ACCESS_TOKEN  = '595214910.f3de7f8.c92a1adf58004687bb3657bdfbd4de46'
+IG_ACCESS_TOKEN = '1427663286.f3de7f8.f46d002289224b3c845248b2c0954961'
 
+TOTAL_ACTIONS = 0
 
 ###### DO NOT TOUCH ANYTHING UNDER HERE UNLESS YOU KNOW WHAT YOU ARE DOING, DANGER DANGER, SERIOUS PROBLEMS IF YOU TOUCH ###########
 
@@ -63,6 +65,8 @@ def likePicture(pictureId)
   url = "https://api.instagram.com/v1/media/#{pictureId}/likes"
   send_request(:post, url)
 
+  increment_actions
+
   # Take a Break - Be Human Like
   take_a_break(5)
 end
@@ -72,6 +76,8 @@ def followUser(userId)
   url = "https://api.instagram.com/v1/users/#{userId}/relationship"
   query = {"action" => "follow"}
   send_request(:post, url, query)
+
+  increment_actions
 
   # Take a Break - Be Human Like
   take_a_break
@@ -89,6 +95,7 @@ def likeAndFollowUser(userId)
     response['data'].each_with_index do |picture, index|
       puts "Liking picture #{picture['id']}."
       likePicture picture['id']
+      increment_actions
       break if (index + 1) == picsToLike
     end
   rescue Exception => error
@@ -105,6 +112,10 @@ def take_a_break(max = MAX_SECS)
   sleep seconds
 end
 
+def increment_actions
+  TOTAL_ACTIONS +=1
+end
+
 def print_response(response)
   response_code = response["meta"]["code"]
   string = "Response: #{response_code}"
@@ -112,7 +123,7 @@ def print_response(response)
   return string
 end
 
-
+# Run the script.
 if ACTION == :like or ACTION == :like_follow
   def likeUsers(max_results, max_id, tag, picturesLiked=[], usersFollowing=[])
     url = "https://api.instagram.com/v1/tags/#{tag}/media/recent"
@@ -158,10 +169,18 @@ if ACTION == :like or ACTION == :like_follow
     end
   end
 
-  TAGS.each do |tag|
-    picturesLiked, usersFollowing = likeUsers(MAX_COUNT, 0, tag)
-    puts "Liked #{picturesLiked}: Followed #{usersFollowing}: for tag #{tag}"
+  # While less than 30 requests
+  # Instagram limit
+  while TOTAL_ACTIONS < 30
+    TAGS.each do |tag|
+      picturesLiked, usersFollowing = likeUsers(MAX_COUNT, 0, tag)
+      puts "Liked #{picturesLiked}: Followed #{usersFollowing}: for tag #{tag}"
+    end
   end
+
+  TOTAL_ACTIONS = 0
+
+
 
 elsif ACTION == :popular
   puts "Checking Popular Photos"
