@@ -46,6 +46,8 @@ class Liker
     puts ""
     puts "IG limit reached"
     puts "Sleeping for an hour!"
+    puts "Finish Time: #{Time.now.strftime("%H:%M")}"
+    puts "Start Time: #{(Time.now + 3600).strftime("%H:%M")}"
     sleep 3600
 
     # Start again
